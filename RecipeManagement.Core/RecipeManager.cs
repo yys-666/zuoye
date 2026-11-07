@@ -6,12 +6,15 @@ namespace RecipeManagement.Core;
 /// <summary>
 /// Implements the recipe manager using the five nominated collections as
 /// private fields. Day 1 builds the recipe catalogue (Dictionary) and the
-/// shopping list (List); the remaining collections are added on later days.
+/// shopping list (List); Day 2 adds the cooking plan (LinkedList) and the
+/// removed-recipe history (Stack); the instruction queue arrives on Day 3.
 /// </summary>
 public sealed class RecipeManager : IRecipeManager
 {
     private readonly Dictionary<int, Recipe> _recipes = new();
     private readonly List<string> _shoppingList = new();
+    private readonly LinkedList<int> _cookingPlan = new();
+    private readonly Stack<int> _removedRecipes = new();
 
     public RecipeManager(IEnumerable<Recipe> recipes)
     {
@@ -54,9 +57,9 @@ public sealed class RecipeManager : IRecipeManager
 
     public int RecipeCount => _recipes.Count;
     public int ShoppingItemCount => _shoppingList.Count;
-    public int CookingPlanCount => 0;
+    public int CookingPlanCount => _cookingPlan.Count;
     public int PendingInstructionCount => 0;
-    public int RemovedRecipeCount => 0;
+    public int RemovedRecipeCount => _removedRecipes.Count;
 
     public bool AddRecipe(Recipe recipe)
     {
@@ -81,7 +84,7 @@ public sealed class RecipeManager : IRecipeManager
 
     public bool RemoveRecipe(int recipeId)
     {
-        if (!_recipes.ContainsKey(recipeId))
+        if (!_recipes.ContainsKey(recipeId) || _cookingPlan.Contains(recipeId))
         {
             return false;
         }
@@ -105,20 +108,53 @@ public sealed class RecipeManager : IRecipeManager
 
     public void ClearShoppingList() => _shoppingList.Clear();
 
-    public bool AddRecipeToCookingPlan(int recipeId) =>
-        throw new NotImplementedException("Day 2: implement AddRecipeToCookingPlan.");
+    public bool AddRecipeToCookingPlan(int recipeId)
+    {
+        if (!_recipes.ContainsKey(recipeId) || _cookingPlan.Contains(recipeId))
+        {
+            return false;
+        }
 
-    public bool RemoveRecipeFromCookingPlan(int recipeId) =>
-        throw new NotImplementedException("Day 2: implement RemoveRecipeFromCookingPlan.");
+        _cookingPlan.AddLast(recipeId);
+        return true;
+    }
 
-    public bool RestoreLastRemovedRecipe() =>
-        throw new NotImplementedException("Day 2: implement RestoreLastRemovedRecipe.");
+    public bool RemoveRecipeFromCookingPlan(int recipeId)
+    {
+        LinkedListNode<int>? node = _cookingPlan.Find(recipeId);
+        if (node is null)
+        {
+            return false;
+        }
+
+        _cookingPlan.Remove(node);
+        _removedRecipes.Push(recipeId);
+        return true;
+    }
+
+    public bool RestoreLastRemovedRecipe()
+    {
+        if (_removedRecipes.Count == 0)
+        {
+            return false;
+        }
+
+        int recipeId = _removedRecipes.Peek();
+        if (!_recipes.ContainsKey(recipeId) || _cookingPlan.Contains(recipeId))
+        {
+            return false;
+        }
+
+        _removedRecipes.Pop();
+        _cookingPlan.AddLast(recipeId);
+        return true;
+    }
 
     public int? PeekLastRemovedRecipe() =>
-        throw new NotImplementedException("Day 2: implement PeekLastRemovedRecipe.");
+        _removedRecipes.Count == 0 ? null : _removedRecipes.Peek();
 
     public IReadOnlyList<int> GetCookingPlan() =>
-        throw new NotImplementedException("Day 2: implement GetCookingPlan.");
+        _cookingPlan.ToList().AsReadOnly();
 
     public bool StartCooking(int recipeId) =>
         throw new NotImplementedException("Day 3: implement StartCooking.");
